@@ -1,81 +1,77 @@
-///* https://stackoverflow.com/questions/19867512/change-text-input-border-color */
 
-/* 
-TODO:
-Either works.  See which is preferred
-Break down into smaller and use ConstantSourceNode
-1) Why is hover over button not triggering transition
-2) Add button triggers - have parent pick them up
-    will need some id on button 
-    read text input check not null
-3) Feedback interval - display msg for few seconds fromwithin save event listener
-4) functions to save to local storage/retrieve etc...
-Using jquery.
-5) read from storage and display text as go through big display loop
- */
-
-// Use VS Code theme:  Google vs theme and install:   One Monekai
-// Dont let edit previous descriptions?  Requirement?
-// transition of image on button not working with bootstrap
-// Can we use flexbox and css grid instead?
-
-
-
-/*
-While/For Loop that loops starting at 9 and breaks at 5
-- For each loop generate or build html timeblock row
-  • Append timeblock to container
-    º Hour
-      - A number corresponding with the hour in 12 hour format
-    º Textarea
-      - Show existing event text, if any and allow user to input event text
-    º Save Button
-      - When clicked, store/reset the event text corresponding with the hour to localStorage
-  • Increase hour by one
-  • Check if hour is past, current or future and apply corresponding css class to timeblock
+/* TODO list to enter into GIT
+1) anon function in event listener - name and use ie:   saveInputCalendarEvent()
+2) Increase scope of functionality to offer ability to view day other than current day and
+save calendar entries associated with a particular day. Current functionality scoped to save entries 
+for current day - not recording against date in storage. Thus same calendar events appear for any day app is run.
+3) Change reference to feedback image to feedback_icon.
 */
+
+/**-------------------------------------------------------------
+ * 
+ * Filename: script.js
+ * Desc:
+ * Logic for accessing stored Event Calendar for current day, updating
+ * saving and displaying.
+ * Along with event listeners associated entering and saving new calendar entries
+ * as well as feedback message
+ * Author: Irene Atek
+ * --------------------------------------------------------------
+ */
+  
+
 
 
 /**
  * Module imports
  */
-import {storageLayerInstance} from './storage_layer.js';   /*- MODULE modification -*/
+import {storageLayerInstance} from './storage_layer.js';   
 
 
-// JD Are we best picking up elements with class/id?  Any advantages over one?
-//var calendarContainerEl = $('.events-container'); // use class
-var calendarContainerEl = $('#events-container');   // or use id?
-var currDateHeaderEl = $('#currentDay');   // or use class
-
-
-
-
-const HTML_TIMEBLOCK_ROW_CLASS = `row time-block`;
-const HTML_TIMEBLOCK_HOUR_CLASS = `col-md-1 hour`;
-
-// or
-const HTML_TIMEBLOCK_ROW_DIV = ` <div class="row time-block">`;
-const HTML_TIMEBLOCK_HOUR_DIV = `<div class="col-md-1 hour">`;
-
-const HTML_DESCRIPTION_TEXTAREA = `<textarea class="col-md-10 description past"></textarea>`;
-const HTML_SAVE_BUTTON_IMG = `<button class="btn btn-lg saveBtn"><i class="fa-regular fa-floppy-disk"></i></button>`;
-
-// Original
-const START_BUS_DAY_HR = 9;        // in 24 hour 
-const END_BUS_DAY_HR = 18; 
-
-// test
-/* const START_BUS_DAY_HR = 15;        // in 24 hour 
-const END_BUS_DAY_HR = 23; */
 
 /**
- * 
- */ 
+ * Global constants
+ */
 
+/*  Business Day start and end - represented in 24 hour clock  (0-23) */
+const START_BUS_DAY_HR = 9;        
+const END_BUS_DAY_HR = 18; 
+
+
+ /* Duration feedback will be displayed on each question cycle */
+ const FEEDBACK_DISPLAY_DURATION = 2000;  // 2 secs in millisecs
+ 
+/* Feedback messages */
+const MSG_FEEDBACK_EVENTS_SAVED = 'Event added to local storage.';
+
+/* 
+ * Colours used to indicate when event has been edited, 
+ * remains editable as well as once it has been recorded/persisted.
+ */
+const CSS_COLOR_EVENT_RECORDED = 'white';
+const CSS_COLOR_EVENT_EDITABLE = 'black';
+const CSS_COLOR_EVENT_EDITED = '#06aed5';
+
+
+/**
+ *  Query Selectors 
+ */
+var calendarContainerEl = $('#events-container');   
+var currDateHeaderEl = $('#currentDay');  
+var feedbackEl = $('.feedback');
+var feedbackImgEl = $('.feedback_img');
+
+
+/**
+ * Class to represent an entry in the EventsCalendar
+ * Properties:   
+ *    - timeSlot (should be int 0-23 to represent hour of 24 hour clock)
+ *    - eventDesc (string representing multiline event description)
+ */ 
 class CalendarEvent {
 
     constructor(timeSlot, eventDesc) {
-      this.timeSlot = timeSlot;      // in 24 hour
+      this.timeSlot = timeSlot;      
       this.desc = eventDesc;
     }
 }
@@ -86,297 +82,76 @@ class CalendarEvent {
  * : Friday, December 9th
  */
 function displayHeaderCurrDate() {
-  // should we just create this one on load?
-  var currDate = moment().format('dddd, MMMM Do');
-  currDateHeaderEl.text(currDate);
+    var currDate = moment().format('dddd, MMMM Do');
+    currDateHeaderEl.text(currDate);
 }
 
 
-// Debug method TEMP
-function getEventDetails(event) {
-  var eventDetails = `Event = 
-    ${event.type} 
-    <br/> X = 
-    ${event.pageX}
-    <br/>Y = 
-    ${event.pageY} 
-    <br/>Target Type = 
-    ${event.target.type}
-    <br/>Target Tag Name = 
-    ${event.target.tagName}
-    <br/>Target id = 
-      ${event.target.id}
-    `;
 
-    var elementId = event.target.id;
-    
-  console.log(elementId);
-  console.log(eventDetails);
-  //$("#lead").html(eventDetails);
-}
-/* 
-    //Bootstrap dummy html
-          <div class="col-md-1 hour">
-
-        <div class="row time-block">
-          <div class="col-md-1 hour">
-            4AM
-          </div>
-          <textarea class="col-md-10 description past"></textarea>
-          <button class="btn btn-lg saveBtn"><i class="fa-regular fa-floppy-disk"></i></button>
-        </div> */
-
-
-
-/*         <div class="row time-block">
-        <div class="col-md-1 hour">
-          4AM
-        </div>
-        <textarea class="col-md-10 description past"></textarea>
-        <button class="btn btn-lg saveBtn"><i class="fa-regular fa-floppy-disk"></i></button>
-      </div>
- */
-
-
-
-/* var now = moment().hour();
-console.log(moment().format('hh:mm:ss'));
-console.log(`curr moment = ${now}`); */
-//console.log(`get hour as 24 hour ${now.hour()}`);
-
-// TODO Take as 24 hour clock
-// at 12.35 00:35 in morning should show them all as future
 
 /**
- * 
- * @param {*} hour 
- * @returns 
+ *  Utility functions 
  */
+
+
+/**
+ * Does param represent a valid hour in 24 hour clock?
+ * @param {*} int representing hour 
+ * @returns true if between 0-23, false otherwise
+ */ 
+// TODO: Add param validation
 function isValidTimeSlot(hour) {
-  if (hour>=0 && hour<24) {
-    return true;
-  } else {
-    return false;
-  }
-
-
-}
-/**
- * If null calendarEVents then auto returns null.
- * @param {*} arrCalendarEventObjects an array of CalendarEvent objects 
- * @returns CalendarEvent object if time_slot property of CalendarEvent equals the hour arg. 
- * Returns null otherwise.
- */
-/**
- * 
- */
-function findCalendarEventByHour(hour, calendarEvents) {
-  console.log(`findCalendarEventByHour(${hour}, ${calendarEvents})`);
-  if (calendarEvents == null) {
-    // first entry in recorded calendar
-    //calendarEvents = [];
-    return null;
-  }
-
-
-  // validate hour is int >=0 and <24 and calendarEvents not null
-  // if (isValidTimeSlot(hour)) {....}
-  for (var i=0; i<calendarEvents.length; i++) {
-    //if (calendarEvents[i]['timeSlot']==hour) {
-    if (calendarEvents[i].timeSlot == hour) {
-      return calendarEvents[i];
-    }
-  }
-
-  return null;
-}
-// var calendarObj = getCalendarEventByHour(hr);
-
-
-    
-function displayCalendar() {
-
-  console.log(`entered displayCalendar`);
-  var calendarEvents=storageLayerInstance.retrieveAllRecords();
-  // expect this to be ordered
-
-
-
-  //var calendarContainerEl = $('.events-container'); // use class
-  var calendarContainerEl = $('#events-container');   // or use id?
- 
-  // create moments representing start and end business 'hour'
-  var businessHour = moment(START_BUS_DAY_HR,'HH').hour();
-  var endBusinessHour = moment(END_BUS_DAY_HR,'HH').hour();
-  
-/*   if (startOfBusiness > endOfBusiness) {
-    throw new Error("startOfBusiness>endOfBusiness")
-  } */
-  console.log(`businessHour = ${businessHour}`);
-  console.log(`endBusinessHour = ${endBusinessHour}`);
-  
-  var hr=START_BUS_DAY_HR;
-  
-  // Retrieve hour of current timestamp 
-  var nowHour = moment().hour();
-  console.log(`nowHour = ${nowHour}`);
-
-  // should we compare moments or ints?  ints simplier
-
-  while (businessHour <= endBusinessHour){
-  
-    //while (startOfBusiness.hour() <= endOfBusiness.hour()){
-
-    // is it better to increment moment and convert and test
-    // or loop in other function which increments
-    // then on each loop would just need a get now
-    // for loop increments i++
-    // which is used to create moment with that hour
-    // before then if stmts just check now.hour with...m
-    // Either way split up into smaller funcs.
-    //var calendarContainerEl = $('#events-container');
-  
-
-      
-    var rowEl = createTimeBlockRowEl();
-    /*         // create Time block Element
-        var timeBlockEl = $('<div>');         // TIME BLOCK ELEMENT
-        var time = moment(startOfBusiness,'HH').format('ha'); 
-        timeBlockEl
-            .addClass("col-md-1 hour")           // TIME BLOCK CLASSES
-            .text(time);
- */
-    var businessHour = moment(hr,'HH').hour();
-    var timeBlockEl = createHourElment(businessHour);
-    var calEventDescEl = createEventDescrEl(hr, calendarEvents);
-        
- 
-
-    if (nowHour > businessHour) {
-      calEventDescEl.addClass('past');
-    } else if (nowHour == businessHour) {
-      calEventDescEl.addClass('present');
+    if (hour>=0 && hour<24) {
+      return true;
     } else {
-      calEventDescEl.addClass('future');
+      return false;
     }
-    // add custommised id with hour or idx in local storage
-    var saveBtnEl = createSaveButtonEl("9999");
-    
-    // Append them to existing calendar events container element
-    rowEl.append(timeBlockEl);
-    rowEl.append(calEventDescEl);
-    rowEl.append(saveBtnEl);
-    calendarContainerEl.append(rowEl);
-
-    // Increment to next business hour
-    businessHour.add(1, 'hours');
-
-  }
 }
 
-
-
-function displayCalendar_orig() {
-
-  console.log(`entered displayCalendar`);
-
-  //var calendarContainerEl = $('.events-container'); // use class
-  var calendarContainerEl = $('#events-container');   // or use id?
-
-  // validation
-  // ensure bus day start and end  if start>end
-  if (START_BUS_DAY_HR > END_BUS_DAY_HR) { 
-      throw new Error("BUS DAY init is invalid.");
-  }
-
-
-  var startOfBusiness = moment(START_BUS_DAY_HR,'HH');
-  var endOfBusiness = moment(END_BUS_DAY_HR,'HH');
-  
-  if (startOfBusiness > endOfBusiness) {
-    throw new Error("startOfBusiness>endOfBusiness")
-  }
-  console.log(startOfBusiness.hour());
-  console.log(endOfBusiness.hour());
-  
-  var hr=START_BUS_DAY_HR;
-  
-  var now = moment().hour();
-  while (startOfBusiness.hour() <= endOfBusiness.hour()){
-
-  // is it better to increment moment and convert and test
-  // or loop in other function which increments
-  // then on each loop would just need a get now
-  // for loop increments i++
-  // which is used to create moment with that hour
-  // before then if stmts just check now.hour with...m
-  // Either way split up into smaller funcs.
-  
-    
-    var calendarContainerEl = $('#events-container');
-  
-
-      // create timeblock row
-       // var rowEl = $(HTML_TIMEBLOCK_ROW_DIV);
-       var rowEl = $('<div>');                //define and use ROW ELEMENT
-       rowEl.addClass('row time-block');      // ROW CLASSES
-
-      
-        // create Time block Element
-        var timeBlockEl = $('<div>');         // TIME BLOCK ELEMENT
-        var time = moment(startOfBusiness,'HH').format('ha'); 
-        timeBlockEl
-            .addClass("col-md-1 hour")           // TIME BLOCK CLASSES
-            .text(time);
-
-
-        // create event description text area element
-        var eventDescEl = $('<textarea>');        // EVENT_DESC_ELEMENT  or EVENT_TEXT_ELEMENT
-        eventDescEl.addClass('col-md-10 description');
-
-        if (now > startOfBusiness.hour()) {
-          eventDescEl.addClass('past');
-        } else if (now == startOfBusiness.hour()) {
-          eventDescEl.addClass('present');
-        } else {
-          eventDescEl.addClass('future');
-        }
-
-          // create button with image
-          // add custommised id with hour or idx in local storage
-          
-          var saveBtnEl = $('<button>');
-          saveBtnEl.addClass('btn btn-lg saveBtn');
-
-          //<button class="btn btn-lg saveBtn"><i class="fa-regular fa-floppy-disk"></i></button>
-
-          saveBtnEl.append('<i class="fa-regular fa-floppy-disk"></i>');
-
-        //calendarContainerEl.append(timeBlockEl);
-        rowEl.append(timeBlockEl);
-        rowEl.append(eventDescEl);
-        rowEl.append(saveBtnEl);
-        
-       calendarContainerEl.append(rowEl);
-
-
-    startOfBusiness.add(1, 'hours');
-  
-  }
-
-
-
-}
 
 /**
- * .
+ * Searches passed in existing calendarEvents to see if there is an entry for the
+ * supplied hour.  
+ * @param {*} hour an integer represent hour in 24 hour clock (0-23)
+ * @param {*} calendarEvents an array of CalendarEvent objects representing existing stored calendar
+ * @returns CalendarEvent object if there exists an entry for specified hour in existing Calendar.
+ * Returns null if either:
+ *  - No entry exists or 
+ *  - A null  is passed in for calendarEvents.
+ */
+// TODO: Add param hour validation
+function findCalendarEventByHour(hour, calendarEvents) {
+
+    if (calendarEvents == null) {
+      // no calendar events exists
+      return null;
+    }
+
+    for (var i=0; i<calendarEvents.length; i++) {
+      if (calendarEvents[i].timeSlot == hour) {
+        // found entry for specified hour
+        return calendarEvents[i];
+      }
+    }
+
+    // no entry exists
+    return null;
+}
+
+
+
+/**
+ * Dynamically update, create html functions
+ */
+
+
+/**
  * @returns html div element representing the time block
  */
 function createTimeBlockRowEl() {
-
-  var rowEl = $('<div>');                
-  rowEl.addClass('row time-block');      
-  return rowEl;
+    var rowEl = $('<div>');                
+    rowEl.addClass('row time-block');      
+    return rowEl;
 }
 
 /**
@@ -385,85 +160,59 @@ function createTimeBlockRowEl() {
  * @param {*} hr - an integer representing an hour in time of the 24 hour clock ie: 0-24.
  * @returns html div element representing the hour time, with param time displayed.
  */
+// TODO: Validate hr arg - between 0-23
 function createHourElment(hr) {
-  // TODO: Validate arg is int between 0-23
-  console.log(`createHourElement:  hr = ${hr}`);
-
-  var timeBlockEl = $('<div>');        
-  var time = moment(hr,'HH').format('ha'); 
-  console.log(`createHourElement:  time = ${time}`);
-  timeBlockEl
-      .addClass("col-md-1 hour")          
-      .text(time);
-  return timeBlockEl;
+    var timeBlockEl = $('<div>');        
+    var time = moment(hr,'HH').format('ha'); 
+    timeBlockEl
+        .addClass("col-md-1 hour")          
+        .text(time);
+    return timeBlockEl;
 }
 
 
 /**
- * @param {*} calEvent a string representing the description of a calendar event.
- * @param {*} hr representing hour of timeslot associated with calendar event
+ * Creates associated calendar event decription element.
+ * @param {*} calEvent a string representing the description of a new calendar event.
+ * @param {*} hr representing hour of timeslot associated with the calendar event
  * @param {*} calendarEvents representing 
- * @returns html textarea element representing a calendar event description , with calEvent displayed.
+ * @returns html textarea element representing a calendar event description (eventDesc) for given hr.
  */
-/**
- * for given new CalendarEvent object
- */
-//function createEventDescrEl(hr, calEvent,calendarEvents) {
-//function createEventDescrEl(storedCalendar, newCalEvent) {
 function createEventDescrEl(hr, eventDesc) {
 
-    /*         if (newEventDesc!= null) {
-             calEventDescEl.val(calendarO)
- */
+    var eventDescEl = $('<textarea>');        
+    eventDescEl.addClass('col-md-10 description');
+    // link to hour representing time slot
+    eventDescEl.attr('id', `calendar-event-${hr}`); 
+    if (eventDesc!= null) {
+      eventDescEl.val(eventDesc);     
+    }
 
-
-  var eventDescEl = $('<textarea>');        
-  eventDescEl.addClass('col-md-10 description');
-
-  // link to hour representing time slot
-  eventDescEl.attr('id', `calendar-event-${hr}`); 
-
-  /* if (storedCalendar!= null && newCalEvent!= null) {
-    //var desc = calendarObj.desc;
-    calEventDescEl.val(newCalEvent.desc) */
-
-  if (eventDesc!= null) {
-    eventDescEl.val(eventDesc); // Do we need to check this?
-  }
-
-  
-  //var existingCalEvent = findCalendarEventByHour(newCalEvent.timeSlot, storedCalendar);
-  //var desc = newCalEvent.desc;
-  //if (existingCalEvent != null && desc != null)  {
-      // set textarea.val
-  //    eventDescEl.val(newCalEvent.desc)
-  //}
-
-  return eventDescEl;
+    return eventDescEl;
 }
 
-// TODO: Add event listener to row container?
-// TODO: 
-          // add custommised id with hour or idx in local storage
+
 /**
- * Customises the html button with some id to indicate/represent the calendar even / time block to be saved.
- * @param {*} id ??? Some id representing current calendar event time block
- * @returns html button element with save image , with id added to custom attribute ???
+ * Create a save button, customised with id indicating the hr_time_slot associated with,so that when triggered
+ * will be able to determine which slot to update/save.
+ * 
+ * @param {*} hr_time_slot int representing 24 hour clock time slot button will be used to update/save
+ * @returns html button element with a child save icon along with customised id btn-<hr_time_slot>
  */
 function createSaveButtonEl(hr_time_slot) {
 
-  var saveBtnEl = $('<button>');
-  saveBtnEl.addClass('btn btn-lg saveBtn');
-  saveBtnEl.attr('id', `btn-${hr_time_slot}`);
-  //<button class="btn btn-lg saveBtn"><i class="fa-regular fa-floppy-disk"></i></button>
-  saveBtnEl.append('<i class="fa-regular fa-floppy-disk"></i>');
-  return saveBtnEl;
+    var saveBtnEl = $('<button>');
+    saveBtnEl.addClass('btn btn-lg saveBtn');
+    saveBtnEl.attr('id', `btn-${hr_time_slot}`);
+    saveBtnEl.append('<i class="fa-regular fa-floppy-disk"></i>');
+    return saveBtnEl;
 }
 
 
-
-function displayCalendar2() {
-
+/**
+ * 
+ */
+function displayCalendar() {
 
 
     var desc;
@@ -474,30 +223,30 @@ function displayCalendar2() {
     var businessHour;
     var saveBtnEl;
 
-    // Retrieve hour of current timestamp 
-    var nowHour = moment().hour();
-    console.log(`nowHour = ${nowHour}`);
-
+    
+    var nowHour = moment().hour();  // current hour
     var storedCalendar=storageLayerInstance.retrieveAllRecords();
 
     for (var hr=START_BUS_DAY_HR; hr<END_BUS_DAY_HR; hr++) {
-        // create html representing 'hr' time block row in calendar
-        console.log(`hr = ${hr}`);
+
+        // create html representing 'hr' time block row of calendar display
         rowEl = createTimeBlockRowEl();
         timeBlockEl = createHourElment(hr);
+        saveBtnEl = createSaveButtonEl(hr);
 
-        // Retrieve any stored calendar entry for current hr timeslot
+        // create and customise event description associated with current hr timeslot
+
+        // retrieve any existing entry from stored calendar for current hr 
         calendarObj = findCalendarEventByHour(hr, storedCalendar);
         if (calendarObj!= null) {
            desc = calendarObj.desc;
         } else {
             desc = null;
         }
-
-        calEventDescEl = createEventDescrEl(hr, desc); // or pass in calendar objt
-        businessHour = moment(hr,'HH').hour();
+        calEventDescEl = createEventDescrEl(hr, desc); 
         
         // Format calendar event element according to current time
+        businessHour = moment(hr,'HH').hour();
         if (nowHour > businessHour) {
           calEventDescEl.addClass('past');
         } else if (nowHour == businessHour) {
@@ -505,83 +254,14 @@ function displayCalendar2() {
         } else {
           calEventDescEl.addClass('future');
         }
-        // add custommised id with hour or idx in local storage
-        saveBtnEl = createSaveButtonEl(hr);
+        
     
-      // Append them to existing calendar events container element
+      // Append newly created elements to existing container element representing calendar events display
       rowEl.append(timeBlockEl);
       rowEl.append(calEventDescEl);
       rowEl.append(saveBtnEl);
       calendarContainerEl.append(rowEl);
     }
-}
-
-
-function displayCalendar2_orig() {
-
-  console.log(`entered displayCalendar`);
-
-  //var calendarContainerEl = $('.container');
-  var calendarContainerEl = $('#events-container');
-
-  // ensure bus day start and end  if start>end
-  if (START_BUS_DAY_HR > END_BUS_DAY_HR) { 
-      throw new Error("BUS DAY init is invalid.");
-  }
-
-
-  var now = moment().hour();
-  for (var hr=START_BUS_DAY_HR; hr<END_BUS_DAY_HR; hr++) {
-
-      // create timeblock row     createTimeBlockRowEl() returns el
-     // var rowEl = $(HTML_TIMEBLOCK_ROW_DIV);
-     var rowEl = $('<div>');                //define and use ROW ELEMENT
-     rowEl.addClass('row time-block');      // ROW CLASSES
-
-    
-      // create Time block Element bundle into createHourElment(time) return timeBlockEl
-      var timeBlockEl = $('<div>');         // TIME BLOCK ELEMENT
-      var time = moment(hr,'HH').format('ha'); 
-      timeBlockEl
-          .addClass("col-md-1 hour")           // TIME BLOCK CLASSES
-          .text(time);
-
-
-      // create event description text area element  createEventDescrEl(eventText, hr) return eventDescEl
-      var eventDescEl = $('<textarea>');        // EVENT_DESC_ELEMENT  or EVENT_TEXT_ELEMENT
-      eventDescEl.addClass('col-md-10 description');
-     
-
-      var businessHour = moment(hr,'HH').hour();
-
-      if (now > businessHour) {
-        eventDescEl.addClass('past');
-      } else if (now == businessHour) {
-        eventDescEl.addClass('present');
-      } else {
-        eventDescEl.addClass('future');
-      }
-
-
-        // create button with image   displaySaveBtn(id) return saveBtnEl
-        // add custommised id with hour or idx in local storage
-        
-        var saveBtnEl = $('<button>');
-        saveBtnEl.addClass('btn btn-lg saveBtn');
-
-        //<button class="btn btn-lg saveBtn"><i class="fa-regular fa-floppy-disk"></i></button>
-
-        saveBtnEl.append('<i class="fa-regular fa-floppy-disk"></i>');
-
-      //calendarContainerEl.append(timeBlockEl);
-      // Join up elements and then add to container el
-      rowEl.append(timeBlockEl);
-      rowEl.append(eventDescEl);
-      rowEl.append(saveBtnEl);
-      
-     calendarContainerEl.append(rowEl);
-
-  }
 }
 
 
@@ -615,7 +295,8 @@ function removeCalendarEvent(hour_slot) {
 
 /**
 * TODO: Move to DataLayer and allow this to call it
-* 
+* Creates a new CalendarEvent object for given hour_slot, input
+
 * @param {} hour_slot 
 * @param {*} input 
 */
@@ -680,38 +361,34 @@ function recordCalendarEvent(hour_slot, event_desc) {
   }
 
   
-  
+  /**
+   * Functions to process Calendar once retrieve from or before 
+   * persistence layer.from/before persisting.
+   */
+
 /**
- * Assumes passing in array of CalendarEvent objects, 
- * sorts by timeSlot ascending order before being saved to storage.
- */
+ * Sorts the calEventsArr (by CalendarEvent timeSlot, ascending order.)
+ * Once data sorted, stores array as persistent data.
+ * @param {*} calEventsArr assumes array of CalendarEvent objects
+ */// TODO: Param validation
 function saveAllCalendarEvents(calEventsArr) {
 
-  // sort by timeSlot ascending
-  calEventsArr.sort(function(a,b){
-    return a.timeSlot - b.timeSlot
-  }); 
+    // sort by timeSlot ascending
+    calEventsArr.sort(function(a,b){
+      return a.timeSlot - b.timeSlot
+    }); 
 
-
-
-/*   calEventsArr.sort((a,b) => 
-    a.timeSlot - b.timeSlot
-  ); */
-  storageLayerInstance.recordArrayObjects(calEventsArr);
-
-
-
-  //TODO Decide functionality between here and storage layer:  should this be here or in storage layer?
-
+    storageLayerInstance.recordArrayObjects(calEventsArr);
 }
 
-const CSS_COLOR_EVENT_RECORDED = 'white';
-const CSS_COLOR_EVENT_EDITABLE = 'black';
-const CSS_COLOR_EVENT_EDITED = '#06aed5';
 
 
 /**
- * 
+ * Sets up required JQuery event listeners for page.
+ * To listen for:
+ *     - click event for event calendar description
+ *     - event description textarea change event
+ *     - click of either save button or it's child icon click
  */
 function loadEventListeners() {
 
@@ -731,107 +408,50 @@ function loadEventListeners() {
 
 
 
-  /** Pick up on button/button image click to save input event into CalendarEvents */
+  /** Picks up on clicks bubbling up to the parent container holding all the events items.  
+   * However only processes if button or button's child I tag triggered listneer. 
+   */
   $('#events-container').on('click', function(eventObject) {
-      // TODO if click on event details change colour to black
-      //$(this).css("color", "black");
+    
+        var buttonId;
+        
+        // Get hour of calendar event - using id of button or parent button of image triggering listener
+        if (eventObject.target.tagName=="BUTTON") {
+          buttonId = eventObject.target.id;
 
+        } else if (eventObject.target.tagName == "I") {
+          // retrieve id of parent button
+          var buttonEl = $(eventObject.target).parent();
+          buttonId = buttonEl.attr('id');
 
-
-
-      console.log(`events-container listener triggered....`);
-      // eventObject.stopPropagation();  DO I NEED THIS?
-      console.log(`eventObject.target.tagName = ${eventObject.target.tagName}`);
-
-/*       // TODO: How best check for both but if IMG then need to get parent id
-      if (eventObject.target.tagName == "I") {
-        // retrieve parent of I which should be button
-        console.log(`Image on button pressed`);
-      } */
-
-      // only for button event types
-      // CAREFUL:  on click if BUTTON or I
-      var buttonId;
-      
-      // Get hour of calendar event - using id of button or parent button of image triggering listener
-      if (eventObject.target.tagName=="BUTTON") {
-        console.log('button clicked');
-        buttonId = eventObject.target.id;
-        console.log(`save button triggered button id = *${buttonId}*`);
-
-      } else if (eventObject.target.tagName == "I") {
-        console.log('image on save button clicked');
-        // retrieve id of parent button
-        //var buttonEl = eventObject.target.parent;
-        var buttonEl = $(eventObject.target).parent();
-
-        console.log(`buttonEl= ${buttonEl}`);
-        buttonId = buttonEl.attr('id');
-
-       // buttonId = eventObject.parent().id;
-        console.log(`image on save button triggered button id = *${buttonId}*`);
-
-      } else {
-        return;
-        // else ignore
-      }
-
-        // process
-   /*      var buttonId = eventObject.target.id;
-        console.log(`save button triggered button id = *${buttonId}*`); */
+        } else {
+          // else ignore click
+          return;
+        }
 
         // extract integer representing 24 hour clock
         var hour_slot = buttonId.replace('btn-','');
-        console.log(`save button pressed for hour slot ${hour_slot}`);
-        console.log(hour_slot); 
 
         // Read associated textarea where id = `calendar-event-${hour_slot}`;
-        //var input = $.trim($(`#calendar-event-${hour_slot}`).val());
         var input = $(`#calendar-event-${hour_slot}`).val().trim();
-          console.log(`input = ${input}`);
 
         if (input != "") {
-          //input = input.trim();
-          console.log(`input = ${input}`);
-        
-          console.log(`calling recordCalendarEvent`);
+          // New entry => entry to be added to calendar
           recordCalendarEvent(hour_slot, input);
+
         } else {
-          // TODO Decide what should be done - display in feedback loop?
-          //throw new Error("No event details provided to save.");
-          // May have overwritten so delete from local storage?  call deleteCalendarEvent
-          
-          // remove or ensure removed from stored calendar
-          
-          console.log(`!!!!!!!!!!!!!!!!!!calling removeCalendarEvent`);
+          // No input => Entry to be cleared from calendar
           removeCalendarEvent(hour_slot);
         }
 
-        /* Modify color of associated textarea not button or image */
-        
-      
-
-        
-        displayFeedback(MSG_FEEDBACK_EVENTS_SAVED);  //TO DO ADD INTERVAL  change to events updated
-
-
-        // Clear feedback msg after timeout
+        /* Show message for specified timeout before clearing. */
+        displayFeedback(MSG_FEEDBACK_EVENTS_SAVED);  
         setTimeout(clearFeedback, FEEDBACK_DISPLAY_DURATION);
 
-        console.log(`**************updating textarea colour to ${CSS_COLOR_EVENT_RECORDED}`);
-        console.log(`#calendar-event-${hour_slot}`);
-        console.log($(`#calendar-event-${hour_slot}`));
-        console.log($(`#calendar-event-${hour_slot}`).css('color'));
-
-        $(`#calendar-event-${hour_slot}`).css('color', CSS_COLOR_EVENT_RECORDED); // still to be saved
+        /* Modify color of associated textarea not, button or image, to show item still to be saved */
+        $(`#calendar-event-${hour_slot}`).css('color', CSS_COLOR_EVENT_RECORDED); 
         
-        //$(this).siblings(`#calendar-event-${hour_slot}`).css('color', CSS_COLOR_EVENT_RECORDED); // still to be saved
-        //$(this).css('color', CSS_COLOR_EVENT_RECORDED); // still to be saved
-        console.log(`*************** should have now updated  textarea colour to ${CSS_COLOR_EVENT_RECORDED}`);
-    
-      
-     
-    });  // end anon function - TODO Name it and use name instead.  saveInputCalendarEvent()
+    });  // end event calendar click
 
   } // end loadEventListeners
 
@@ -843,86 +463,60 @@ function loadEventListeners() {
   */
 
 
- /**
-  * Sets up the element not to be shown:
-  * - currently by adding 'hide' to the element's classlist.
-  * See .css to ensure 'hide' style sets the element to not be shown.
-  * Note function will not impact any other classes that are currently on the element
-  * and so multi classes should be allowed along with the 'hide'.  
-  * No dupes are possible as  classlist represents set of tokens it will only hold unique items.
-  * @param {*} element 
+/**
+  *     Functions to dynamically inject HTML and apply CSS
+  * 
   */
- function hide(element) {
-  // ensure keep any other classes intact
-  // element.classList.add("hide");
-  //element.addClass("hide");
-  // bootstrap not hide but invisible
-  element.addClass("invisible");
+
+
+/**
+* Sets up the element not to be shown:
+* - using bootstrap and so adds 'invisible' to the element's classlist not hide.
+* Note function will not impact any other classes that are currently on the element
+* and so multi classes should be allowed along with the 'hide'.  
+* No dupes are possible as classlist represents set of tokens it will only hold unique items.
+* @param {*} element 
+*/
+function hide(element) {
+    element.addClass("invisible");
 }
 
 /**
-* Ensures  class of element no longer includes 'hide'.
-* See .css to ensure 'hide' style displays the given element.
+* Ensures class of element no longer includes 'visible'.
+* - using bootstrap and so adds 'visible' to the element's classlist not show.
 * Note function will only remove 'hide' class and have no impact on any other classes 
 * that are currently on the element before function call.
 * @param {*} element 
 */
 function show(element) {
-  // ensure keep any other classes intact
-  //element.classList.remove("hide");
-  console.log(`show()...`);
-  //element.removeClass("hide");
-  // bootstrap not hide but invisible
-  element.removeClass("invisible");
+    element.removeClass("invisible");
 }
 
 
 
-/*
-While/For Loop that loops starting at 9 and breaks at 5
-- For each loop generate or build html timeblock row
-  • Append timeblock to container
-    º Hour
-      - A number corresponding with the hour in 12 hour format
-    º Textarea
-      - Show existing event text, if any and allow user to input event text
-    º Save Button
-      - When clicked, store/reset the event text corresponding with the hour to localStorage
-  • Increase hour by one
-  • Check if hour is past, current or future and apply corresponding css class to timeblock
-*/
 
- /* Duration feedback will be displayed on each question cycle */
- const FEEDBACK_DISPLAY_DURATION = 2000;  // 2 secs in millisecs
- 
-/* Feedback messages */
-const MSG_FEEDBACK_EVENTS_SAVED = 'Events Added to local storage.';
 
-var feedbackEl = $('.feedback');
-var feedbackImgEl = $('.feedback_img');
-
+/**
+ * Updates 'msg' in the feedback element and makes feedback text and associated tick icon
+ * visible. 
+ * @param {*} msg String to be displayed as feedback msg.
+ */
 function displayFeedback(msg) {
-  console.log(`displayFeedback entered with msg = ${msg}`);
-  console.log(feedbackEl);
-
-  //feedbackEl.innerText= msg;
-  //feedbackEl.textContent = msg;
-  feedbackEl.text(msg);
-  //feedbackEl.val(msg);
-  
-  console.log(`displayFeedback entered with msg = ${msg}`);
-  {/* <i class="fa-solid fa-check"></i> */}
-  show(feedbackEl);
-  show(feedbackImgEl);
+    feedbackEl.text(msg);
+    show(feedbackEl);
+    show(feedbackImgEl);
 }
 
 
-
+/**
+ * Clears feedback message, making both the feedback text and associated tick icon invisible.
+ */
 function clearFeedback() {
-  feedbackEl.innerText= '';
-  hide(feedbackEl);
-  hide(feedbackImgEl);
+    feedbackEl.innerText= '';
+    hide(feedbackEl);
+    hide(feedbackImgEl);
 }
+
 
 
 /**
@@ -936,22 +530,12 @@ function main() {
   if (START_BUS_DAY_HR > END_BUS_DAY_HR) { 
     throw new Error("START_BUS_DAY_HR should be before END_BUS_DAY_HR.");
   }
-
   
   clearFeedback();
-  displayHeaderCurrDate();  //displayCurrDateHeader?
-  displayCalendar2();
-  //displayCalendar();
+  displayHeaderCurrDate();  
+  displayCalendar();
   loadEventListeners();
 
-
-/*   var startOfBusiness = moment(9,'h');
-  
-  while (startOfBusiness.hour() < 18) {
-    console.log(startOfBusiness.hour());
-    console.log(startOfBusiness.hour());
-    startOfBusiness.add(1,'hours');
-  } */
 }
 
 

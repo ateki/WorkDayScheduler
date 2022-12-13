@@ -1,94 +1,64 @@
 /**
- * Implemented as a singleton class:  to hold storage functions
+ * Implemented as a singleton class:  for persistence layer and functions.
+ * This singleton class is simply a persistence layer which should be called to
+ * persist calendar data to Storage.
+ * THis layer should keep data of implementation hidden to calling code.
+ * Note this layer should remain agnostic to the datastructure of calendar being 
+ * persisted.  The calling code using this layer should be solely in charge for representing
+ * and understanding the impelmentation of the calendar.
  * 
  */
 
+/**
+ * Global constants
+ */
 const LOCAL_STORAGE_KEY_CAL_EVENTS = "calendar";
+
+
+/**
+ * Singleton Class
+ */
 class StorageLayer {
 
-
-    
     /**
- * Assumes passing in array of HighScore objects, sorts by high score descending and saved into local storage.
- */
-/* function saveHighScoresToStorage(scoresArr) {
-
-    //  sort by high score
-    scoresArr.sort(function(a,b){return b.score - a.score});
-
-    var arrHighScores = localStorage.setItem(LOCAL_STORAGE_KEY_HIGHSCORES, JSON.stringify(scoresArr));
-
-    return arrHighScores;  
-} */
-
-    // record single record object
-    record(data) {
-        console.log(`record ${key} = ${data}`);
-        if (data != null) {
-            // TODO: validate that object is of type CalendarEvent
-            // retrieve all calendar events from storage ->  Array of CalendarEvent
-            // replace record were hour_slot is same as
-            // or do so in calling code?
-        }
-    }
-
-    // TODO Does this need to return anything?
+      * Persists the passed in calEventsArr to local storage under the key LOCAL_STORAGE_KEY_CAL_EVENTS.
+      * @param {Store} calEventsArr should be array of objects representing calendar event.
+      * This layer is agnostic to structure of objects passed in and  simply stores the argument an stringified 
+      * JSON string to local storage. // TODO Validate arg
+      */ 
     recordArrayObjects(calEventsArr) {
-        
-        //console.log(`recordArrayObjects ${key} = ${data}`);
-        console.log(`recordArrayObjects ${calEventsArr}`);
-        
         localStorage.setItem(LOCAL_STORAGE_KEY_CAL_EVENTS, JSON.stringify(calEventsArr));
-        
-      /*   var arrCalendarEvents = localStorage.setItem(LOCAL_STORAGE_KEY_CAL_EVENTS, JSON.stringify(calEventsArr));
-        return arrCalendarEvents; */
     }
 
 
     /**
-     * @returns  array of objects where each object expected to be of class type HighScoreObject.
-     */ // TODO: Decide if LOCAL STORAGE KEY is known here or in calling code. For now keep here.
-    // retrieveAllRecords(key) {
+     * Retrieves from local storage the stringified JSON stored under the key  LOCAL_STORAGE_KEY_CAL_EVENTS.
+     * This function parses the JSON from stored text to a Javascript object representing calendar events. 
+     * @returns Object representing the persisted calendar events.  Note this function should remain agnostic to the
+     * structure of objects persisted and simply returns the stored object from local storage.
+     */
     retrieveAllRecords() {
-
-        //console.log(`retrieveAllRecords ${key}}`);
-        console.log(`retrieveAllRecords `);
         var arrCalendarEvents = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_CAL_EVENTS));
         return arrCalendarEvents;  
     }
 
 
-    retrieveAll(key) {
-        console.log(`retrieve ${key}}`);
-
-    }
-
     /**
-     * Do we need?
-     */
-    //clearAll(key) {
-    clearAll(key) {
-        //console.log(`clearAll ${key}}`);
-        console.log(`clearAll `);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_CAL_EVENTS);
-    }
-
-
-    /**
-     * Removes all high score info recorded in local storage.
+     * Removes  persisted calendar events information from local storage
+     * - stored under the key LOCAL_STORAGE_KEY_CAL_EVENTS.
      */
     clearAllCalEvents() {
         localStorage.removeItem(LOCAL_STORAGE_KEY_CAL_EVENTS);
     }
-
-
 }
 
 
-console.log(`loading storage layer`);
+
+/**
+ * Singleton pattern implemented to ensure no changes possible and only one instance of object.
+ */
 const storageLayerInstance = new StorageLayer();
 
 Object.freeze(storageLayerInstance);    // ensures no modification of this obj
-
 
 export  {storageLayerInstance};
