@@ -1,12 +1,3 @@
-
-/* TODO list to enter into GIT
-1) anon function in event listener - name and use ie:   saveInputCalendarEvent()
-2) Increase scope of functionality to offer ability to view day other than current day and
-save calendar entries associated with a particular day. Current functionality scoped to save entries 
-for current day - not recording against date in storage. Thus same calendar events appear for any day app is run.
-3) Change reference to feedback image to feedback_icon.
-*/
-
 /**-------------------------------------------------------------
  * 
  * Filename: script.js
@@ -76,22 +67,11 @@ class CalendarEvent {
     }
 }
 
-/**
- * Displays current date in the header of page.
- * Date is formatted as  Day of Wk, Month Date in following format:
- * : Friday, December 9th
- */
-function displayHeaderCurrDate() {
-    var currDate = moment().format('dddd, MMMM Do');
-    currDateHeaderEl.text(currDate);
-}
 
 
-
-
-/**
- *  Utility functions 
- */
+/** ----------------------------------------
+ * Utility Functions
+ -------------------------------------------*/
 
 
 /**
@@ -101,11 +81,11 @@ function displayHeaderCurrDate() {
  */ 
 // TODO: Add param validation
 function isValidTimeSlot(hour) {
-    if (hour>=0 && hour<24) {
-      return true;
-    } else {
-      return false;
-    }
+  if (hour>=0 && hour<24) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 
@@ -122,27 +102,87 @@ function isValidTimeSlot(hour) {
 // TODO: Add param hour validation
 function findCalendarEventByHour(hour, calendarEvents) {
 
-    if (calendarEvents == null) {
-      // no calendar events exists
-      return null;
-    }
-
-    for (var i=0; i<calendarEvents.length; i++) {
-      if (calendarEvents[i].timeSlot == hour) {
-        // found entry for specified hour
-        return calendarEvents[i];
-      }
-    }
-
-    // no entry exists
+  if (calendarEvents == null) {
+    // no calendar events exists
     return null;
+  }
+
+  for (var i=0; i<calendarEvents.length; i++) {
+    if (calendarEvents[i].timeSlot == hour) {
+      // found entry for specified hour
+      return calendarEvents[i];
+    }
+  }
+
+  // no entry exists
+  return null;
 }
 
 
 
+
+/** ----------------------------------------
+ * Functions to  dynamically generate and/or 
+ * update HTML and customise css.
+ -------------------------------------------*/
+
+
 /**
- * Dynamically update, create html functions
+* Sets up the element not to be shown:
+* - using bootstrap and so adds 'invisible' to the element's classlist not hide.
+* Note function will not impact any other classes that are currently on the element
+* and so multi classes should be allowed along with the 'hide'.  
+* No dupes are possible as classlist represents set of tokens it will only hold unique items.
+* @param {*} element 
+*/
+function hide(element) {
+  element.addClass("invisible");
+}
+
+
+/**
+* Ensures class of element no longer includes 'visible'.
+* - using bootstrap and so adds 'visible' to the element's classlist not show.
+* Note function will only remove 'hide' class and have no impact on any other classes 
+* that are currently on the element before function call.
+* @param {*} element 
+*/
+function show(element) {
+  element.removeClass("invisible");
+}
+
+
+/**
+ * Displays current date in the header of page.
+ * Date is formatted as  Day of Wk, Month Date in following format:
+ * : Friday, December 9th
  */
+function displayHeaderCurrDate() {
+  var currDate = moment().format('dddd, MMMM Do');
+  currDateHeaderEl.text(currDate);
+}
+
+
+/**
+* Updates 'msg' in the feedback element and makes feedback text and associated tick icon
+* visible. 
+* @param {*} msg String to be displayed as feedback msg.
+*/
+function displayFeedback(msg) {
+  feedbackEl.text(msg);
+  show(feedbackEl);
+  show(feedbackImgEl);
+}
+
+
+/**
+* Clears feedback message, making both the feedback text and associated tick icon invisible.
+*/
+function clearFeedback() {
+  feedbackEl.innerText= '';
+  hide(feedbackEl);
+  hide(feedbackImgEl);
+}
 
 
 /**
@@ -153,6 +193,7 @@ function createTimeBlockRowEl() {
     rowEl.addClass('row time-block');      
     return rowEl;
 }
+
 
 /**
  * Formats the hr parameter to have format hour am/pm ie: 9am, 10am
@@ -210,10 +251,12 @@ function createSaveButtonEl(hr_time_slot) {
 
 
 /**
- * 
+ * Pulls the stored existing calendar and determines how to display
+ * on the page: dynamically generating and customing the html/css accordingly.
+ * Finally the newly created elements are appended onto the existing html element
+ * represented by calendarContainerEl.
  */
 function displayCalendar() {
-
 
     var desc;
     var rowEl;
@@ -265,20 +308,28 @@ function displayCalendar() {
 }
 
 
+
+
+/** ----------------------------------------
+ * Functions to process calls to remove or 
+ * retrieve existing stored Calendar entries.
+ * -----------------------------------------*/
+
+
 /**
+ * Retrieves stored calendar and removes the calendar entry associated with given hour_slot.
+ * The updated calendar will then be persisted in storage,
+ * If no entry exists for specified hour_slot, no changes are made to stored calendar.
  * 
  * @param {*} hour_slot 
  */
 function removeCalendarEvent(hour_slot) {
 
-  
-  var arrCalendarEvents = storageLayerInstance.retrieveAllRecords();
-  console.log(`1(removeCalendarEvent). arrCalendarEvents= ${arrCalendarEvents}`);
-
   var update=false;
+  var arrCalendarEvents = storageLayerInstance.retrieveAllRecords();
+
   for (var i=0; i<arrCalendarEvents.length; i++) {
     var calendarEventObj = arrCalendarEvents[i];
-    console.log(`checking for hour_slot ${hour_slot}`);
     if (calendarEventObj.timeSlot == hour_slot) {
       // remove from array
       arrCalendarEvents.splice(i, 1);
@@ -294,77 +345,64 @@ function removeCalendarEvent(hour_slot) {
 
 
 /**
-* TODO: Move to DataLayer and allow this to call it
-* Creates a new CalendarEvent object for given hour_slot, input
-
+* 
+* Creates a new calendar entry (represented by CalendarEvent object)
+* for time specified by hour_slot arg and entry description of event_desc.
+* The new entry will then be used to update the persisted calendar in storage.
+*
 * @param {} hour_slot 
 * @param {*} input 
-*/
+*/   // TODO: validate
 function recordCalendarEvent(hour_slot, event_desc) {
 
-  // TODO: validate
-
-  // ADDED sort 13/12
-  if (typeof hour_slot==='string' || hour_slot instanceof String ) {
-    hour_slot = parseInt(hour_slot);
-  } else if (! Number.isInteger(hour_slot)) {
-      throw new Error(`recordCalendarEvent expects a string to be parsed into integer or an integer for hour_slot`);
-  }
-  // retrieve all if any records currently stored  var arrCalendarEvents = StorageLayerInstance.retrieveAll(SOME_KEY);
-  
-    var foundExistingEntry = false;
+    if (typeof hour_slot==='string' || hour_slot instanceof String ) {
+      hour_slot = parseInt(hour_slot);
+    } else if (! Number.isInteger(hour_slot)) {
+        throw new Error(`recordCalendarEvent expects a string to be parsed into integer or an integer for hour_slot`);
+    }
+    // retrieve all if any records currently stored  var arrCalendarEvents = StorageLayerInstance.retrieveAll(SOME_KEY);
+    
     var update=false;
+    var foundExistingEntry = false;
 
     var arrCalendarEvents = storageLayerInstance.retrieveAllRecords();
-    console.log(`1. arrCalendarEvents= ${arrCalendarEvents}`);
-
     if (arrCalendarEvents ==null) {
+
+      // first entry in stored calendar
       arrCalendarEvents=[];
       
-      console.log(`2. arrCalendarEvents= ${arrCalendarEvents}`);
     }  else {
-      for (var i=0; i<arrCalendarEvents.length; i++) {
-        var calendarEventObj = arrCalendarEvents[i];
-        console.log(`checking for hour_slot ${hour_slot}`);
-        console.log(`checking for calendarEventObj.hour_slot ${calendarEventObj.hour_slot}`);
 
-        if (hour_slot == calendarEventObj.timeSlot) {
-          foundExistingEntry = true;
+        for (var i=0; i<arrCalendarEvents.length; i++) {
+          var calendarEventObj = arrCalendarEvents[i];
 
-          // NOTE: Don't bother checking if event_desc is the same as maybe too long to check if any of multi line text has changed
-          // Keep it simple and just always update entry desc with new event desc
-          arrCalendarEvents[i].desc = event_desc;
-          update=true;
-          break;
+          if (hour_slot == calendarEventObj.timeSlot) {
+
+            foundExistingEntry = true;
+
+            // NOTE: Don't bother checking if event_desc is the same as too long to check if any of multi line text has changed
+            // Keeping simple by always updating existing entry desc with new event desc
+            arrCalendarEvents[i].desc = event_desc;
+            update=true;
+            break;
+          }
         }
-      }
     }
 
       
     if (!foundExistingEntry) {
-      // First entry for given timeslot - push onto existing entries
-      
-      console.log(`3. found first entry for given timeslot`);
+      // First entry for given timeslot - push onto existing entries arr
       arrCalendarEvents.push(new CalendarEvent(hour_slot, event_desc));
       update=true;
     }
 
-    
-    console.log(`4. arrCalendarEvents= ${arrCalendarEvents}`);
-
     if (update) {
-      // save updated calendar events
-      // update storage with new entries
+      // persist updated calendar in storage
       saveAllCalendarEvents(arrCalendarEvents);
     }        
            
   }
 
-  
-  /**
-   * Functions to process Calendar once retrieve from or before 
-   * persistence layer.from/before persisting.
-   */
 
 /**
  * Sorts the calEventsArr (by CalendarEvent timeSlot, ascending order.)
@@ -383,6 +421,13 @@ function saveAllCalendarEvents(calEventsArr) {
 
 
 
+
+
+/** ----------------------------------------
+ * Event Listeners.
+ * -----------------------------------------*/
+
+
 /**
  * Sets up required JQuery event listeners for page.
  * To listen for:
@@ -390,6 +435,7 @@ function saveAllCalendarEvents(calEventsArr) {
  *     - event description textarea change event
  *     - click of either save button or it's child icon click
  */
+// TODO: Break up and name functions rather than call anon.
 function loadEventListeners() {
 
   /** When click textarea, font changes colour to show it is editable. */
@@ -456,72 +502,13 @@ function loadEventListeners() {
   } // end loadEventListeners
 
 
-     
- /**
-  *     Utility functions 
-  * 
-  */
-
-
-/**
-  *     Functions to dynamically inject HTML and apply CSS
-  * 
-  */
-
-
-/**
-* Sets up the element not to be shown:
-* - using bootstrap and so adds 'invisible' to the element's classlist not hide.
-* Note function will not impact any other classes that are currently on the element
-* and so multi classes should be allowed along with the 'hide'.  
-* No dupes are possible as classlist represents set of tokens it will only hold unique items.
-* @param {*} element 
-*/
-function hide(element) {
-    element.addClass("invisible");
-}
-
-/**
-* Ensures class of element no longer includes 'visible'.
-* - using bootstrap and so adds 'visible' to the element's classlist not show.
-* Note function will only remove 'hide' class and have no impact on any other classes 
-* that are currently on the element before function call.
-* @param {*} element 
-*/
-function show(element) {
-    element.removeClass("invisible");
-}
 
 
 
-
-
-/**
- * Updates 'msg' in the feedback element and makes feedback text and associated tick icon
- * visible. 
- * @param {*} msg String to be displayed as feedback msg.
- */
-function displayFeedback(msg) {
-    feedbackEl.text(msg);
-    show(feedbackEl);
-    show(feedbackImgEl);
-}
-
-
-/**
- * Clears feedback message, making both the feedback text and associated tick icon invisible.
- */
-function clearFeedback() {
-    feedbackEl.innerText= '';
-    hide(feedbackEl);
-    hide(feedbackImgEl);
-}
-
-
-
-/**
+/** ----------------------------------------
  * Main onload functionality
- */
+ * -----------------------------------------*/
+
 
 //function onLoad() {
 function main() {
